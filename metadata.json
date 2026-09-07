@@ -1,0 +1,5 @@
+{
+  "name": "iBaqyla - Журнал посещаемости",
+  "description": "A simple and elegant web application for teachers to track daily student attendance and generate summary reports. Mark students as present, absent, or late, and view a clear report for any selected date.",
+  "requestFramePermissions": []
+}

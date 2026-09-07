@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: config/grades
+    // Fields: id, name, classes (array of objects)
+    //
+    // Collection: config/users
+    // Fields: id, name, role, password, classIds (array)
+    //
+    // Collection: config/statuses
+    // Fields: value, label
+    //
+    // Collection: attendance/{date}/{studentId}
+    // Fields: status, note, updatedAt
+    //
+    // Collection: submissions/{date}/{classId}
+    // Fields: submittedAt, submittedByUserId
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // For now, we allow anyone authenticated to read/write config if they are in the 'admin' role
+      // In a real app, we'd check a specific user document or custom claims
+      return isAuthenticated(); 
+    }
+
+    // Rules
+    match /config/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /attendance/{date}/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /submissions/{date}/{classId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "Grade": {
+      "title": "Grade",
+      "description": "A grade level containing multiple classes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "name": { "type": "string" },
+        "classes": { "type": "array" }
+      },
+      "required": ["id", "name", "classes"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Daily attendance for a specific student",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "note": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Teacher submission log for a class on a specific date",
+      "type": "object",
+      "properties": {
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "submittedByUserId": { "type": "number" }
+      },
+      "required": ["submittedAt", "submittedByUserId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Application user (admin, teacher, viewer)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "password": { "type": "string" },
+        "classIds": { "type": "array" }
+      },
+      "required": ["id", "name", "role"]
+    },
+    "StatusOption": {
+      "title": "Status Option",
+      "description": "Customizable attendance status options",
+      "type": "object",
+      "properties": {
+        "value": { "type": "string" },
+        "label": { "type": "string" }
+      },
+      "required": ["value", "label"]
+    }
+  },
+  "firestore": {
+    "/config/grades": {
+      "schema": "Grade",
+      "description": "Global grades and classes structure"
+    },
+    "/config/users": {
+      "schema": "User",
+      "description": "Global users list"
+    },
+    "/config/statuses": {
+      "schema": "StatusOption",
+      "description": "Global attendance statuses"
+    },
+    "/attendance/{date}/{studentId}": {
+      "schema": "AttendanceRecord",
+      "description": "Attendance records organized by date and student"
+    },
+    "/submissions/{date}/{classId}": {
+      "schema": "Submission",
+      "description": "Submission logs organized by date and class"
+    }
+  }
+}
