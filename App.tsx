@@ -807,6 +807,8 @@ const App: React.FC = () => {
             currentUser={currentUser}
             availableStatuses={availableStatuses}
             initialDate={selectedDate}
+            initialGradeId={selectedGradeId}
+            initialClassId={selectedClassId}
             onImportReport={handleImportReport}
         />
       )}

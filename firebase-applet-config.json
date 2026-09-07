@@ -6,5 +6,7 @@
   "firestoreDatabaseId": "ai-studio-29ce6259-8961-4beb-9af0-f4beab9c2739",
   "storageBucket": "gen-lang-client-0929673875.firebasestorage.app",
   "messagingSenderId": "361732058167",
-  "measurementId": ""
+  "measurementId": "",
+  "oAuthClientId": "361732058167-8ho9e6ovm77cb51t6nofsih9acmrj0g7.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }
