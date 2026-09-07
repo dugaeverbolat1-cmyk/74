@@ -69,11 +69,11 @@
       "schema": "StatusOption",
       "description": "Global attendance statuses"
     },
-    "/attendance/{date}/{studentId}": {
+    "/attendance/{date}/records/{studentId}": {
       "schema": "AttendanceRecord",
       "description": "Attendance records organized by date and student"
     },
-    "/submissions/{date}/{classId}": {
+    "/submissions/{date}/classes/{classId}": {
       "schema": "Submission",
       "description": "Submission logs organized by date and class"
     }

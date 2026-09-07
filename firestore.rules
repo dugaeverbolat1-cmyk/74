@@ -40,14 +40,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /attendance/{date}/{studentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    match /attendance/{allPaths=**} {
+      allow read, write: if isAuthenticated();
     }
 
-    match /submissions/{date}/{classId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    match /submissions/{allPaths=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

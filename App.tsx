@@ -95,29 +95,45 @@ const App: React.FC = () => {
 
   // Real-time synchronization for attendance and submissions based on selected date
   useEffect(() => {
-    if (!isAuthReady || !selectedDate) return;
+    if (!selectedDate) return;
 
-    const unsubAttendance = onSnapshot(collection(db, 'attendance', selectedDate), (snapshot) => {
+    const unsubAttendance = onSnapshot(collection(db, 'attendance', selectedDate, 'records'), (snapshot) => {
       const dailyAttendance: AttendanceRecord = {};
-      snapshot.forEach(doc => {
-        dailyAttendance[Number(doc.id)] = doc.data() as any;
+      snapshot.forEach(docSnap => {
+        dailyAttendance[Number(docSnap.id)] = docSnap.data() as any;
       });
-      setAttendance(prev => ({ ...prev, [selectedDate]: dailyAttendance }));
+      setAttendance(prev => ({
+        ...prev,
+        [selectedDate]: {
+          ...(prev[selectedDate] || {}),
+          ...dailyAttendance
+        }
+      }));
+    }, (error) => {
+      console.warn("Attendance listener warning:", error.message);
     });
 
-    const unsubSubmissions = onSnapshot(collection(db, 'submissions', selectedDate), (snapshot) => {
+    const unsubSubmissions = onSnapshot(collection(db, 'submissions', selectedDate, 'classes'), (snapshot) => {
       const dailySubmissions: Record<number, SubmissionLog> = {};
-      snapshot.forEach(doc => {
-        dailySubmissions[Number(doc.id)] = doc.data() as any;
+      snapshot.forEach(docSnap => {
+        dailySubmissions[Number(docSnap.id)] = docSnap.data() as any;
       });
-      setSubmissions(prev => ({ ...prev, [selectedDate]: dailySubmissions }));
+      setSubmissions(prev => ({
+        ...prev,
+        [selectedDate]: {
+          ...(prev[selectedDate] || {}),
+          ...dailySubmissions
+        }
+      }));
+    }, (error) => {
+      console.warn("Submissions listener warning:", error.message);
     });
 
     return () => {
       unsubAttendance();
       unsubSubmissions();
     };
-  }, [isAuthReady, selectedDate]);
+  }, [selectedDate, isAuthReady]);
 
   const currentUser = useMemo<User>(() => {
     const fallbackUser: User = { id: 0, name: 'No User', role: 'teacher', classIds: [] };
@@ -233,18 +249,79 @@ const App: React.FC = () => {
   }, [submissions, selectedDate, selectedClassId]);
 
   const handleStatusChange = useCallback(async (studentId: number, status: AttendanceStatus) => {
-    if (isUserViewer || !isAuthReady) return;
+    if (isUserViewer) return;
     
-    try {
-      await setDoc(doc(db, 'attendance', selectedDate, String(studentId)), {
+    const nowIso = new Date().toISOString();
+
+    // 1. Immediate optimistic local update so UI reflects the selection instantly
+    setAttendance(prev => {
+      const currentDay = { ...(prev[selectedDate] || {}) };
+      currentDay[studentId] = {
         status,
-        updatedAt: new Date().toISOString()
-      });
+        studentId,
+        updatedAt: nowIso
+      };
+      return {
+        ...prev,
+        [selectedDate]: currentDay
+      };
+    });
+
+    // 2. Persist to Firestore with valid path
+    try {
+      const studentDocRef = doc(db, 'attendance', selectedDate, 'records', String(studentId));
+      await setDoc(studentDocRef, {
+        status,
+        studentId,
+        updatedAt: nowIso
+      }, { merge: true });
     } catch (error) {
-      console.error("Error updating status:", error);
+      console.error("Error updating status in Firestore:", error);
     }
-  }, [selectedDate, isAuthReady, isUserViewer]);
+  }, [selectedDate, isUserViewer]);
   
+  const handleBatchStatusChange = useCallback(async (status: AttendanceStatus) => {
+    if (selectedStudentIds.size === 0 || isUserViewer) return;
+
+    const studentIdsArray: number[] = Array.from(selectedStudentIds);
+    const nowIso = new Date().toISOString();
+
+    // 1. Immediate optimistic local update
+    setAttendance(prev => {
+      const currentDay = { ...(prev[selectedDate] || {}) };
+      studentIdsArray.forEach(id => {
+        currentDay[id] = {
+          status,
+          studentId: id,
+          updatedAt: nowIso
+        };
+      });
+      return {
+        ...prev,
+        [selectedDate]: currentDay
+      };
+    });
+
+    // Clear selection
+    setSelectedStudentIds(new Set());
+
+    // 2. Persist batch to Firestore with valid paths
+    try {
+      const batch = writeBatch(db);
+      studentIdsArray.forEach(id => {
+        const studentDocRef = doc(db, 'attendance', selectedDate, 'records', String(id));
+        batch.set(studentDocRef, {
+          status,
+          studentId: id,
+          updatedAt: nowIso
+        }, { merge: true });
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error batch updating status in Firestore:", error);
+    }
+  }, [selectedStudentIds, selectedDate, isUserViewer]);
+
   const handleToggleStudentSelection = useCallback((studentId: number) => {
       setSelectedStudentIds(prev => {
           const newSet = new Set(prev);
@@ -270,36 +347,67 @@ const App: React.FC = () => {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const handleConfirmAll = useCallback(async () => {
-    if (!selectedClass || isUserViewer || !isAuthReady) return;
+    if (!selectedClass || isUserViewer) return;
     
     const currentDayAttendance = attendance[selectedDate] || {};
-    const batch = writeBatch(db);
-    
-    selectedClass.students.forEach(student => {
-        if (!currentDayAttendance[student.id]) {
-            const studentDoc = doc(db, 'attendance', selectedDate, String(student.id));
-            batch.set(studentDoc, { 
-              status: statusKeys.PRESENT,
-              updatedAt: new Date().toISOString()
-            });
+    const nowIso = new Date().toISOString();
+
+    // Optimistic local update
+    setAttendance(prev => {
+      const currentDay = { ...(prev[selectedDate] || {}) };
+      selectedClass.students.forEach(student => {
+        if (!currentDay[student.id]) {
+          currentDay[student.id] = {
+            status: statusKeys.PRESENT,
+            studentId: student.id,
+            updatedAt: nowIso
+          };
         }
+      });
+      return { ...prev, [selectedDate]: currentDay };
     });
 
-    const submissionDoc = doc(db, 'submissions', selectedDate, String(selectedClass.id));
-    batch.set(submissionDoc, {
-        submittedAt: new Date().toISOString(),
-        submittedByUserId: currentUser.id
-    });
+    setSubmissions(prev => ({
+      ...prev,
+      [selectedDate]: {
+        ...(prev[selectedDate] || {}),
+        [selectedClass.id]: {
+          submittedAt: nowIso,
+          submittedByUserId: currentUser.id
+        }
+      }
+    }));
 
     try {
+      const batch = writeBatch(db);
+      
+      selectedClass.students.forEach(student => {
+          if (!currentDayAttendance[student.id]) {
+              const studentDoc = doc(db, 'attendance', selectedDate, 'records', String(student.id));
+              batch.set(studentDoc, { 
+                status: statusKeys.PRESENT,
+                studentId: student.id,
+                updatedAt: nowIso
+              }, { merge: true });
+          }
+      });
+
+      const submissionDoc = doc(db, 'submissions', selectedDate, 'classes', String(selectedClass.id));
+      batch.set(submissionDoc, {
+          submittedAt: nowIso,
+          submittedByUserId: currentUser.id,
+          classId: selectedClass.id
+      }, { merge: true });
+
       await batch.commit();
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
       setShowConfirmModal(false);
     } catch (error) {
       console.error("Error submitting report:", error);
+      setShowConfirmModal(false);
     }
-  }, [selectedClass, selectedDate, attendance, currentUser.id, statusKeys, isAuthReady, isUserViewer]);
+  }, [selectedClass, selectedDate, attendance, currentUser.id, statusKeys, isUserViewer]);
 
   const handleAddStudent = useCallback(async (name: string, gender: Gender) => {
     if (!selectedClass || !isAuthReady) return;
@@ -728,6 +836,73 @@ const App: React.FC = () => {
                 <div className="overflow-x-auto">
                     {filteredStudents.length > 0 ? (
                         <>
+                            {selectedStudentIds.size > 0 && !isUserViewer && (
+                                <div className="bg-emerald-50 dark:bg-emerald-950/80 border-b border-emerald-200 dark:border-emerald-800 p-3 px-6 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                                        <span className="inline-flex items-center justify-center bg-emerald-600 text-white rounded-full w-6 h-6 text-xs font-bold">
+                                            {selectedStudentIds.size}
+                                        </span>
+                                        <span>{t('selected')}: {selectedStudentIds.size}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('applyToSelected')}:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleBatchStatusChange(statusKeys.PRESENT)}
+                                            className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700 active:scale-95"
+                                        >
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            {t('present')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleBatchStatusChange(statusKeys.LATE)}
+                                            className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-yellow-300 dark:border-yellow-700 active:scale-95"
+                                        >
+                                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                            {t('late')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleBatchStatusChange(statusKeys.ABSENT_ILLNESS)}
+                                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-red-300 dark:border-red-700 active:scale-95"
+                                        >
+                                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                            {t('absentIllnessShort')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleBatchStatusChange(statusKeys.ABSENT_VALID)}
+                                            className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-amber-300 dark:border-amber-700 active:scale-95"
+                                        >
+                                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                            {t('absentValidShort')}
+                                        </button>
+                                        <select
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    handleBatchStatusChange(e.target.value as AttendanceStatus);
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                            defaultValue=""
+                                            className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-xs rounded-lg px-2 py-1.5 font-medium text-gray-700 dark:text-gray-200 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                                        >
+                                            <option value="" disabled>{t('status')}...</option>
+                                            {availableStatuses.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedStudentIds(new Set())}
+                                            className="ml-2 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-gray-700 rounded-lg transition"
+                                        >
+                                            {t('deselectAll')}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div className="px-6 py-3 bg-emerald-50/20 dark:bg-gray-800 border-b border-green-100 dark:border-emerald-900/50 flex items-center justify-between font-semibold text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider sticky top-0 z-10">
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center justify-center mr-2">
@@ -776,6 +951,7 @@ const App: React.FC = () => {
                                         onHistoryClick={setHistoryStudent}
                                         isSelected={selectedStudentIds.has(student.id)}
                                         onToggleSelect={handleToggleStudentSelection}
+                                        disabled={isUserViewer}
                                     />
                                 ))}
                             </div>

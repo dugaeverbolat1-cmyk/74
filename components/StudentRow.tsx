@@ -13,9 +13,21 @@ interface StudentRowProps {
   onHistoryClick: (student: Student) => void;
   isSelected: boolean;
   onToggleSelect: (studentId: number) => void;
+  disabled?: boolean;
 }
 
-const StudentRow: React.FC<StudentRowProps> = ({ index, student, attendanceDetail, onStatusChange, availableStatuses, onAddNewStatusRequest, onHistoryClick, isSelected, onToggleSelect }) => {
+const StudentRow: React.FC<StudentRowProps> = ({ 
+  index, 
+  student, 
+  attendanceDetail, 
+  onStatusChange, 
+  availableStatuses, 
+  onAddNewStatusRequest, 
+  onHistoryClick, 
+  isSelected, 
+  onToggleSelect,
+  disabled = false
+}) => {
   const { t, statusKeys } = useLocale();
   // Default to PRESENT if no status is recorded
   const status = attendanceDetail?.status || statusKeys.PRESENT;
@@ -116,7 +128,8 @@ const StudentRow: React.FC<StudentRowProps> = ({ index, student, attendanceDetai
             <select
                 value={status}
                 onChange={handleSelectChange}
-                className={`block w-48 pl-3 pr-8 py-2 text-base border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 sm:text-sm rounded-md transition-colors ${currentColorClass} focus:ring-yellow-400`}
+                disabled={disabled}
+                className={`block w-48 pl-3 pr-8 py-2 text-base border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 sm:text-sm rounded-md transition-colors ${currentColorClass} focus:ring-yellow-400 ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             >
                  {availableStatuses.map((option) => (
                     <option key={option.value} value={option.value} className="bg-white text-gray-900 dark:bg-gray-700 dark:text-white">
