@@ -91,11 +91,16 @@ const StudentRow: React.FC<StudentRowProps> = ({
 
   const currentColorClass = getStatusColorClass(status);
   const rowStyle = getRowStyle(status);
+  const isMale = student.gender === 'male';
+
+  const genderBgClass = isMale 
+    ? 'bg-blue-50/20 dark:bg-blue-950/10 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+    : 'bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-50/50 dark:hover:bg-rose-900/20';
 
   return (
-    <div className={`px-6 py-4 flex items-center justify-between transition-colors group ${rowStyle} ${isSelected ? 'bg-sky-50 dark:bg-sky-900/20' : ''}`}>
+    <div className={`px-6 py-4 flex items-center justify-between transition-colors group ${rowStyle} ${genderBgClass} ${isSelected ? '!bg-sky-100/70 dark:!bg-sky-900/30' : ''}`}>
         <div className="flex items-center gap-3 flex-grow">
-             <div className="flex items-center justify-center mr-2">
+             <div className="flex items-center justify-center mr-1">
                 <input 
                     type="checkbox" 
                     checked={isSelected}
@@ -103,10 +108,27 @@ const StudentRow: React.FC<StudentRowProps> = ({
                     className="w-5 h-5 rounded text-sky-600 focus:ring-sky-500 border-gray-300 dark:border-gray-500 dark:bg-gray-700 cursor-pointer"
                 />
              </div>
-             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white dark:bg-gray-700 shadow-sm flex items-center justify-center border border-gray-100 dark:border-gray-600">
-                 <span className="font-semibold text-xs text-gray-600 dark:text-gray-300">{index}</span>
+             
+             {/* Gender vertical indicator bar */}
+             <div 
+                className={`w-1.5 h-7 rounded-full flex-shrink-0 transition-colors ${
+                  isMale 
+                    ? 'bg-blue-500 shadow-sm shadow-blue-500/30' 
+                    : 'bg-rose-400 shadow-sm shadow-rose-400/30'
+                }`}
+                title={isMale ? t('boy') : t('girl')}
+             />
+
+             {/* Student number avatar with distinct boy/girl color */}
+             <div className={`flex-shrink-0 w-8 h-8 rounded-full shadow-sm flex items-center justify-center border font-bold text-xs transition-colors ${
+                 isMale 
+                   ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/60 dark:text-blue-200 dark:border-blue-700' 
+                   : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700'
+             }`}>
+                 <span>{index}</span>
              </div>
-             <div className="flex flex-col">
+
+             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5">
                  <button 
                     onClick={() => onHistoryClick(student)}
                     className="font-medium text-gray-900 dark:text-white flex items-center gap-2 hover:text-sky-600 dark:hover:text-sky-400 transition-colors text-left group-hover:underline decoration-dotted decoration-gray-400 underline-offset-4"
@@ -121,6 +143,16 @@ const StudentRow: React.FC<StudentRowProps> = ({
                         </svg>
                      </span>
                  </button>
+
+                 {/* Gender badge */}
+                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border self-start sm:self-auto ${
+                     isMale
+                       ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/70'
+                       : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/70'
+                 }`}>
+                     <span className="text-xs font-bold leading-none">{isMale ? '♂' : '♀'}</span>
+                     <span>{isMale ? t('boy') : t('girl')}</span>
+                 </span>
              </div>
         </div>
         

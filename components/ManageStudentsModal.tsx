@@ -92,8 +92,15 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ students, onC
                                 </div>
                            ) : (
                                 <>
-                                    <div className="flex items-center truncate">
-                                      <span className="text-gray-800 dark:text-gray-200 truncate pr-2">{student.name}</span>
+                                    <div className="flex items-center gap-2 truncate">
+                                      <span className="text-gray-800 dark:text-gray-200 truncate">{student.name}</span>
+                                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                                          student.gender === 'male'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                                            : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                      }`}>
+                                          {student.gender === 'male' ? '♂ ' + t('genderMaleShort') : '♀ ' + t('genderFemaleShort')}
+                                      </span>
                                     </div>
                                     <div className="flex items-center flex-shrink-0">
                                         <button onClick={() => handleEditClick(student)} className="text-sky-500 hover:text-sky-700 p-1 rounded-full hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors">

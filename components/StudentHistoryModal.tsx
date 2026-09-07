@@ -73,7 +73,17 @@ const StudentHistoryModal: React.FC<StudentHistoryModalProps> = ({ student, atte
                 </div>
                 <div>
                     <span className="block text-sm font-normal text-gray-500 dark:text-gray-400">{t('history')}</span>
-                    {student.name}
+                    <div className="flex items-center gap-2">
+                        <span>{student.name}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
+                            student.gender === 'male'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/60 dark:text-blue-300 dark:border-blue-700'
+                              : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/60 dark:text-rose-300 dark:border-rose-700'
+                        }`}>
+                            <span className="font-black leading-none">{student.gender === 'male' ? '♂' : '♀'}</span>
+                            <span>{student.gender === 'male' ? t('boy') : t('girl')}</span>
+                        </span>
+                    </div>
                 </div>
             </h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full p-2 hover:bg-gray-200 dark:hover:bg-gray-700">

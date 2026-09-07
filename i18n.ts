@@ -127,6 +127,12 @@ const translations: Translations = {
   genderFemale: { ru: 'Женский', kk: 'Әйел жынысы' },
   genderMaleShort: { ru: 'М', kk: 'Е' },
   genderFemaleShort: { ru: 'Ж', kk: 'Ә' },
+  boy: { ru: 'Мальчик', kk: 'Ұл' },
+  girl: { ru: 'Девочка', kk: 'Қыз' },
+  boys: { ru: 'Мальчики', kk: 'Ұлдар' },
+  girls: { ru: 'Девочки', kk: 'Қыздар' },
+  allGenders: { ru: 'Все', kk: 'Барлығы' },
+  filterByGender: { ru: 'Пол', kk: 'Жынысы' },
   
   // Manage Users
   manageUsers: { ru: 'Управление пользователями', kk: 'Пайдаланушыларды басқару' },

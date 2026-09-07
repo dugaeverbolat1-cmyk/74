@@ -161,6 +161,7 @@ const App: React.FC = () => {
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<SortByType>('name');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
 
   const isUserAdmin = useMemo(() => currentUser.role === 'admin', [currentUser]);
   const isUserViewer = useMemo(() => currentUser.role === 'viewer', [currentUser]);
@@ -184,6 +185,7 @@ const App: React.FC = () => {
   useEffect(() => {
       setSelectedStudentIds(new Set());
       setSearchQuery('');
+      setGenderFilter('all');
   }, [selectedClassId, selectedGradeId, selectedDate]);
 
   useEffect(() => {
@@ -226,10 +228,21 @@ const App: React.FC = () => {
       return currentUser.classIds.includes(selectedClass.id);
   }, [isUserAdmin, isUserViewer, selectedClass, currentUser]);
 
+  const classGenderStats = useMemo(() => {
+    if (!selectedClass) return { total: 0, boys: 0, girls: 0 };
+    const boys = selectedClass.students.filter(s => s.gender === 'male').length;
+    const girls = selectedClass.students.filter(s => s.gender === 'female').length;
+    return { total: selectedClass.students.length, boys, girls };
+  }, [selectedClass]);
+
   const filteredStudents = useMemo(() => {
     if (!selectedClass) return [];
     let students = [...selectedClass.students];
     
+    if (genderFilter !== 'all') {
+      students = students.filter(s => s.gender === genderFilter);
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       students = students.filter(s => s.name.toLowerCase().includes(query));
@@ -242,7 +255,7 @@ const App: React.FC = () => {
         return a.gender.localeCompare(b.gender);
       }
     });
-  }, [selectedClass, sortBy, searchQuery]);
+  }, [selectedClass, sortBy, searchQuery, genderFilter]);
 
   const isSubmitted = useMemo(() => {
       return !!submissions[selectedDate]?.[selectedClassId];
@@ -788,12 +801,30 @@ const App: React.FC = () => {
         {selectedClass ? (
             <div id="class-report-content" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-green-200 dark:border-emerald-800/50 overflow-hidden animate-fade-in-up">
                 <div className="bg-emerald-50/50 dark:bg-emerald-950/40 p-4 border-b border-green-100 dark:border-emerald-900/50 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
                             <span className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 px-3 py-1 rounded-full text-sm">{selectedClass.name}</span>
                             <span className="text-gray-400">|</span>
                             <span>{t('attendanceTaking')}</span>
                         </h2>
+
+                        {/* Gender color-coded stats summary */}
+                        <div className="flex items-center gap-2">
+                            <span 
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100/80 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-300 dark:border-blue-700 shadow-xs"
+                                title={`${t('boys')}: ${classGenderStats.boys}`}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs"></span>
+                                <span>{t('boys')}: {classGenderStats.boys}</span>
+                            </span>
+                            <span 
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-300 dark:border-rose-700 shadow-xs"
+                                title={`${t('girls')}: ${classGenderStats.girls}`}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-xs"></span>
+                                <span>{t('girls')}: {classGenderStats.girls}</span>
+                            </span>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
                         {canManageStudents && (
@@ -809,7 +840,7 @@ const App: React.FC = () => {
                                 </button>
                             </>
                         )}
-                        <div className="flex flex-col flex-grow md:flex-grow-0 md:w-64">
+                        <div className="flex flex-col flex-grow md:flex-grow-0 md:w-56">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter ml-1 mb-0.5">{t('search')}</label>
                             <div className="relative">
                                 <input
@@ -823,6 +854,18 @@ const App: React.FC = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                             </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter ml-1 mb-0.5">{t('filterByGender')}</label>
+                            <select 
+                                value={genderFilter} 
+                                onChange={(e) => setGenderFilter(e.target.value as 'all' | 'male' | 'female')} 
+                                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 transition shadow-sm h-9 font-medium"
+                            >
+                                <option value="all">{t('allGenders')}</option>
+                                <option value="male" className="text-blue-600 dark:text-blue-400 font-semibold">👦 {t('boys')}</option>
+                                <option value="female" className="text-rose-600 dark:text-rose-400 font-semibold">👧 {t('girls')}</option>
+                            </select>
                         </div>
                         <div className="flex flex-col">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter ml-1 mb-0.5">{t('sortBy')}</label>
